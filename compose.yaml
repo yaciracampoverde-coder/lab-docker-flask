@@ -1,0 +1,53 @@
+services:
+  flask:
+    build: .
+    image: flask-docker-app:2.0
+    ports:
+      - "8080:5000"
+    environment:
+      - APP_VERSION=2.0.0
+      - DB_HOST=postgres
+      - DB_DATABASE=mydb
+      - DB_USER=myuser
+    secrets:
+      - pg_password
+    networks:
+      - public
+      - private
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16.3
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=myuser
+      - POSTGRES_DB=mydb
+      - POSTGRES_PASSWORD_FILE=/run/secrets/pg_password
+    secrets:
+      - pg_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myuser -d mydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+secrets:
+  pg_password:
+    file: ./pg_password.txt
+
+volumes:
+  postgres-data:
+
+networks:
+  public:
+  private:
+    internal: true
+
+
